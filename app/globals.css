@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
+  --background: #07071a;
+  --foreground: #f1f1ff;
 }
 
 @theme inline {
@@ -18,6 +18,218 @@ body {
   font-family: var(--font-geist-sans, Arial, Helvetica, sans-serif);
 }
 
-* {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a60; }
+
+/* ─── Glass Buttons ──────────────────────────────────────────────────────── */
+
+.btn-glass {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.55rem 1.25rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition:
+    box-shadow 0.14s ease,
+    transform 0.1s ease,
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  user-select: none;
+  outline: none;
+  text-decoration: none;
+  border-style: solid;
+  border-width: 1px;
+}
+
+.btn-glass:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Primary: indigo → violet gradient ── */
+.btn-glass-primary {
+  background: linear-gradient(160deg, #6366f1 0%, #6d28d9 100%);
+  color: #fff;
+  border-color: rgba(167, 139, 250, 0.35);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.22),
+    inset  1.5px 0 0 rgba(255,255,255,0.07),
+    inset -1.5px 0 0 rgba(255,255,255,0.07),
+    inset 0 -1.5px 0 rgba(0,0,0,0.22),
+    0 4px 16px rgba(99,102,241,0.38),
+    0 1px 3px rgba(0,0,0,0.3);
+}
+
+.btn-glass-primary:not(:disabled):hover {
+  background: linear-gradient(160deg, #818cf8 0%, #8b3ced 100%);
+  border-color: rgba(196, 181, 253, 0.52);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.36),
+    inset  1.5px 0 0 rgba(255,255,255,0.14),
+    inset -1.5px 0 0 rgba(255,255,255,0.14),
+    inset 0 -1.5px 0 rgba(0,0,0,0.12),
+    0 6px 26px rgba(99,102,241,0.55),
+    0 2px 8px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(167,139,250,0.22);
+  transform: translateY(-1px);
+}
+
+.btn-glass-primary:not(:disabled):active {
+  background: linear-gradient(160deg, #4f46e5 0%, #5b21b6 100%);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    inset 0 2px 7px rgba(0,0,0,0.42),
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 2px 8px rgba(99,102,241,0.25),
+    0 1px 2px rgba(0,0,0,0.3);
+  transform: translateY(1.5px);
+}
+
+/* ── Secondary: frosted glass ── */
+.btn-glass-secondary {
+  background: rgba(255,255,255,0.055);
+  color: rgb(203,213,225);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.1),
+    inset  1.5px 0 0 rgba(255,255,255,0.04),
+    inset -1.5px 0 0 rgba(255,255,255,0.04),
+    inset 0 -1.5px 0 rgba(0,0,0,0.14),
+    0 2px 8px rgba(0,0,0,0.2),
+    0 1px 2px rgba(0,0,0,0.15);
+}
+
+.btn-glass-secondary:not(:disabled):hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border-color: rgba(255,255,255,0.18);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.18),
+    inset  1.5px 0 0 rgba(255,255,255,0.08),
+    inset -1.5px 0 0 rgba(255,255,255,0.08),
+    inset 0 -1.5px 0 rgba(0,0,0,0.08),
+    0 4px 18px rgba(0,0,0,0.32),
+    0 1px 4px rgba(0,0,0,0.2),
+    0 0 0 1px rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+
+.btn-glass-secondary:not(:disabled):active {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.07);
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 1px 3px rgba(0,0,0,0.15);
+  transform: translateY(1.5px);
+}
+
+/* ── Blue tint: small inline action (tracker Next, detail Generate) ── */
+.btn-glass-blue {
+  background: rgba(59,130,246,0.12);
+  color: rgb(147,197,253);
+  border-color: rgba(59,130,246,0.22);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.1),
+    inset  1px 0 0 rgba(255,255,255,0.04),
+    inset -1px 0 0 rgba(255,255,255,0.04),
+    inset 0 -1px 0 rgba(0,0,0,0.12),
+    0 2px 8px rgba(59,130,246,0.18),
+    0 1px 2px rgba(0,0,0,0.18);
+}
+
+.btn-glass-blue:not(:disabled):hover {
+  background: rgba(59,130,246,0.22);
+  color: rgb(191,219,254);
+  border-color: rgba(59,130,246,0.38);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.16),
+    inset  1px 0 0 rgba(255,255,255,0.08),
+    inset -1px 0 0 rgba(255,255,255,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.06),
+    0 3px 12px rgba(59,130,246,0.32),
+    0 1px 3px rgba(0,0,0,0.22);
+  transform: translateY(-0.5px);
+}
+
+.btn-glass-blue:not(:disabled):active {
+  background: rgba(59,130,246,0.07);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.25),
+    inset 0 0.5px 0 rgba(255,255,255,0.04);
+  transform: translateY(1px);
+}
+
+/* ── Ghost: small inline back action ── */
+.btn-glass-ghost {
+  background: transparent;
+  color: rgb(113,113,122);
+  border-color: rgba(255,255,255,0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-glass-ghost:not(:disabled):hover {
+  background: rgba(255,255,255,0.06);
+  color: rgb(212,212,216);
+  border-color: rgba(255,255,255,0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.06),
+    0 2px 8px rgba(0,0,0,0.2);
+  transform: translateY(-0.5px);
+}
+
+.btn-glass-ghost:not(:disabled):active {
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+  transform: translateY(0.5px);
+}
+
+/* ── Size modifiers ── */
+.btn-glass-sm {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+  gap: 0.3rem;
+}
+
+/* ── Danger ── */
+.btn-glass-danger {
+  background: transparent;
+  color: rgb(251,113,133);
+  border-color: rgba(244,63,94,0.15);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  font-weight: 500;
+}
+
+.btn-glass-danger:not(:disabled):hover {
+  background: rgba(244,63,94,0.1);
+  color: rgb(253,164,175);
+  border-color: rgba(244,63,94,0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 2px 8px rgba(244,63,94,0.2);
+  transform: translateY(-0.5px);
+}
+
+.btn-glass-danger:not(:disabled):active {
+  background: rgba(244,63,94,0.06);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+  transform: translateY(0.5px);
 }
