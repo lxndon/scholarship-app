@@ -11,6 +11,7 @@ export const DEFAULT_PROFILE: ApplicantProfile = {
   skills: 'n8n, Make.com, Apify, Next.js, Java, Python, AI/ML, automation',
   careerTarget: 'Tech-focused management consulting',
   background: '',
+  location: 'Indiana',
   essays: ['', '', ''],
 }
 

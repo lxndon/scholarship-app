@@ -23,7 +23,7 @@ export async function scoreScholarships(
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
+    max_tokens: 8000,
     messages: [
       {
         role: 'user',
@@ -32,7 +32,9 @@ export async function scoreScholarships(
 Return ONLY valid JSON (no markdown, no explanation) in this exact format:
 {"<id>": {"match_score": <0-100>, "win_probability_tier": "<high|medium|low>", "reason": "<1 concise sentence>"}, ...}
 
+Score every single scholarship in the list — do not skip any.
 Use these tiers: high = 70+, medium = 40-69, low = 0-39.
+Keep reasons short (under 15 words) to stay within token limits.
 
 APPLICANT:
 Name: ${profile.name}
@@ -52,7 +54,9 @@ ${list}`,
     ],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
-  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-  return JSON.parse(cleaned) as Record<string, MatchScore>
+  const raw = response.content[0].type === 'text' ? response.content[0].text : '{}'
+  const start = raw.indexOf('{')
+  const end = raw.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) return {}
+  return JSON.parse(raw.slice(start, end + 1)) as Record<string, MatchScore>
 }

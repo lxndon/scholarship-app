@@ -9,6 +9,7 @@ export interface ApplicantProfile {
   skills: string
   careerTarget: string
   background: string
+  location: string
   essays: string[]
 }
 

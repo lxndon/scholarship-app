@@ -117,7 +117,11 @@ export default function ProfilePage() {
               <input type="text" value={profile.gpa} onChange={e => update('gpa', e.target.value)}
                 placeholder="0.00" className={inputCls} />
             </Field>
-            <Field label="Honors & Scholarships">
+            <Field label="Hometown / State">
+              <input type="text" value={profile.location ?? ''} onChange={e => update('location', e.target.value)}
+                placeholder="e.g. Indiana, Chicago IL, Monroe County IN" className={inputCls} />
+            </Field>
+            <Field label="Honors & Scholarships" className="col-span-2">
               <input type="text" value={profile.honors} onChange={e => update('honors', e.target.value)}
                 placeholder="e.g. Hudson & Holland Scholar" className={inputCls} />
             </Field>
