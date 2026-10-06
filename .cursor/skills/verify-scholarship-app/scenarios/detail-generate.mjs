@@ -37,7 +37,11 @@ await run(async ({ page }) => {
   await generate.click()
   await page.getByText('Claude is writing your response…').waitFor()
   await capture(page, 'writing')
-  await page.getByRole('button', { name: 'Regenerate' }).first().waitFor({ timeout: 180_000 })
+  // Fail fast on the per-prompt red error (API errors, no credits) instead of timing out.
+  const done = page.getByRole('button', { name: 'Regenerate' }).first()
+  const failed = page.locator('p.text-red-400').first()
+  await done.or(failed).first().waitFor({ timeout: 180_000 })
+  if (await failed.isVisible()) throw new Error(`FAIL: generation shows error: ${await failed.innerText()}`)
   const text = await page.locator('textarea').first().inputValue()
   check(text.split(/\s+/).filter(Boolean).length > 50, `generated response has ${text.split(/\s+/).length} words`)
   check(await page.getByText(/\d+ words/).first().isVisible(), 'word count shown under response')

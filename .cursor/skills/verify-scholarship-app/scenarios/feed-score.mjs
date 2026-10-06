@@ -21,7 +21,11 @@ await run(async ({ page }) => {
   await page.getByRole('button', { name: 'Score with AI' }).click()
   await page.getByText('Claude is scoring all scholarships against your profile…').waitFor()
   await capture(page, 'scoring')
-  await page.getByRole('button', { name: 'Re-score' }).waitFor({ timeout: 180_000 })
+  // Fail fast on the rose error banner (API errors, no credits) instead of timing out.
+  const done = page.getByRole('button', { name: 'Re-score' })
+  const failed = page.locator('div.text-rose-300')
+  await done.or(failed).first().waitFor({ timeout: 180_000 })
+  if (await failed.isVisible()) throw new Error(`FAIL: scoring shows error: ${await failed.innerText()}`)
   await capture(page, 'scored')
 
   const scores = await readStorage(page, 'scholarship-scores')

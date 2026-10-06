@@ -33,6 +33,14 @@ find_repo_dev_server() {
   done
 }
 
+descendants() {
+  local child
+  for child in $(pgrep -P "$1" 2>/dev/null || true); do
+    descendants "$child"
+    echo "$child"
+  done
+}
+
 base_url() {
   if [ -f "$RUN/base_url" ]; then cat "$RUN/base_url"; else echo "http://127.0.0.1:$PORT"; fi
 }
@@ -77,7 +85,11 @@ cmd_launch() {
   fi
   [ -f "$REPO/.env.local" ] || echo "vsa: warning: .env.local missing, AI features will fail"
   echo "http://127.0.0.1:$PORT" > "$RUN/base_url"
-  (cd "$REPO" && nohup npx next dev -p "$PORT" -H 127.0.0.1 > "$RUN/server.log" 2>&1 & echo $! > "$RUN/server.pid")
+  # Background only the server itself (not a cd list), with every std fd
+  # redirected, so no process keeps the caller's stdout pipe open.
+  (cd "$REPO" || exit 1
+   nohup npx next dev -p "$PORT" -H 127.0.0.1 < /dev/null > "$RUN/server.log" 2>&1 &
+   echo $! > "$RUN/server.pid")
   echo "vsa: started next dev (pid $(cat "$RUN/server.pid")), log $RUN/server.log"
   wait_ready
 }
@@ -148,13 +160,13 @@ cmd_cleanup() {
     local pid
     pid="$(cat "$RUN/server.pid")"
     if kill -0 "$pid" 2>/dev/null; then
-      # npx -> next dev -> server: kill the tree we started, nothing else.
-      pkill -TERM -P "$pid" 2>/dev/null || true
-      kill -TERM "$pid" 2>/dev/null || true
+      # npx -> next dev -> server: kill the whole tree we started, nothing else.
+      local tree
+      tree="$(descendants "$pid") $pid"
+      kill -TERM $tree 2>/dev/null || true
       sleep 2
-      pkill -KILL -P "$pid" 2>/dev/null || true
-      kill -KILL "$pid" 2>/dev/null || true
-      echo "vsa: stopped our server (pid $pid)"
+      kill -KILL $tree 2>/dev/null || true
+      echo "vsa: stopped our server tree (pids $tree)"
     fi
   else
     echo "vsa: no server started by vsa, nothing to stop"

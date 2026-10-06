@@ -58,7 +58,7 @@ The app has no `data-testid` or ARIA labels. Profile inputs are not linked to th
 - Each `drive` writes to `~/.cache/verify-scholarship-app/evidence/<YYYYMMDD-HHMMSS>-<scenario>/`: numbered `*.png` and `*.aria.txt` per step, `storage-*.json` side-effect dumps, and `transcript.txt` (every PASS/FAIL/SKIP line and `exit=<rc>`). Override the location with `VSA_EVIDENCE`.
 - Proof standard: drive the real user path (click the real buttons, never call `saveTracker` or set localStorage to fake a state). Capture before and after the action. Confirm the stored side effect with `readStorage` and a reload, not only the visible screen. A run passes only on `RESULT: PASS` with exit 0.
 - A `SKIP:` line means that sub-feature was **not** verified. Report it as skipped, not as passed.
-- AI paths call the real Anthropic API and spend the user's credits. Run them only when the change touches scoring, generation, discovery or resume parsing, and say you're doing it. No mocks exist, and you shouldn't add any.
+- AI paths call the real Anthropic API and spend the user's credits. Run them only when the change touches scoring, generation, discovery or resume parsing, and say you're doing it. No mocks exist, and you shouldn't add any. AI scenarios fail fast on the app's own error banner. A `400 ... credit balance is too low` FAIL means the Anthropic account has no credits, which is a blocked prerequisite, not an app bug.
 
 ## Cleanup
 
