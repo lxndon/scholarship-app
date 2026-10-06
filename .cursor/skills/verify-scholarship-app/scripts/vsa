@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# vsa: verify-scholarship-app control script.
+# Usage: vsa setup | launch | doctor | drive <scenario> | cleanup | paths
+set -euo pipefail
+
+SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="$(cd "$SKILL_DIR/../../.." && pwd)"
+ROOT="${VSA_HOME:-$HOME/.cache/verify-scholarship-app}"
+HARNESS="$ROOT/harness"
+RUN="$ROOT/run"
+EVIDENCE="${VSA_EVIDENCE:-$ROOT/evidence}"
+PORT="${VSA_PORT:-3456}"
+PLAYWRIGHT_VERSION="1.63.0"
+
+die() { echo "vsa: $*" >&2; exit 1; }
+
+# Prints "<pid> <port>" for a `next dev` whose cwd is this repo, or nothing.
+find_repo_dev_server() {
+  local pid cwd port
+  for pid in $(pgrep -f "next dev" 2>/dev/null || true); do
+    cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+    [ "$cwd" = "$REPO" ] || continue
+    port="$(lsof -a -p "$pid" -iTCP -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n.*://p' | head -1)"
+    # The CLI wrapper does not listen; its child server does. Check children too.
+    if [ -z "$port" ]; then
+      local child
+      for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+        port="$(lsof -a -p "$child" -iTCP -sTCP:LISTEN -Fn 2>/dev/null | sed -n 's/^n.*://p' | head -1)"
+        [ -n "$port" ] && break
+      done
+    fi
+    [ -n "$port" ] && { echo "$pid $port"; return; }
+  done
+}
+
+base_url() {
+  if [ -f "$RUN/base_url" ]; then cat "$RUN/base_url"; else echo "http://127.0.0.1:$PORT"; fi
+}
+
+cmd_paths() {
+  echo "repo:     $REPO"
+  echo "harness:  $HARNESS"
+  echo "run:      $RUN"
+  echo "evidence: $EVIDENCE"
+  echo "base_url: $(base_url)"
+}
+
+cmd_setup() {
+  mkdir -p "$HARNESS"
+  if [ ! -f "$HARNESS/node_modules/playwright/package.json" ]; then
+    (cd "$HARNESS" && npm init -y >/dev/null && npm install --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION")
+  fi
+  (cd "$HARNESS" && npx playwright install chromium)
+  [ -f "$REPO/node_modules/next/package.json" ] || (cd "$REPO" && npm install)
+  echo "vsa: setup ok (playwright $PLAYWRIGHT_VERSION in $HARNESS)"
+}
+
+cmd_launch() {
+  mkdir -p "$RUN"
+  if [ -f "$RUN/server.pid" ] && kill -0 "$(cat "$RUN/server.pid")" 2>/dev/null; then
+    echo "vsa: our server already running (pid $(cat "$RUN/server.pid"))"
+    wait_ready
+    return
+  fi
+  local existing
+  existing="$(find_repo_dev_server)"
+  if [ -n "$existing" ]; then
+    set -- $existing
+    echo "http://127.0.0.1:$2" > "$RUN/base_url"
+    rm -f "$RUN/server.pid"
+    echo "vsa: reusing dev server already running for this repo (pid $1, port $2). Not ours, cleanup will leave it."
+    wait_ready
+    return
+  fi
+  if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    die "port $PORT is taken by another process. Set VSA_PORT to a free port."
+  fi
+  [ -f "$REPO/.env.local" ] || echo "vsa: warning: .env.local missing, AI features will fail"
+  echo "http://127.0.0.1:$PORT" > "$RUN/base_url"
+  (cd "$REPO" && nohup npx next dev -p "$PORT" -H 127.0.0.1 > "$RUN/server.log" 2>&1 & echo $! > "$RUN/server.pid")
+  echo "vsa: started next dev (pid $(cat "$RUN/server.pid")), log $RUN/server.log"
+  wait_ready
+}
+
+wait_ready() {
+  local url i
+  url="$(base_url)"
+  for i in $(seq 1 90); do
+    if curl -fsS -o /dev/null "$url/tracker" 2>/dev/null; then
+      echo "vsa: ready at $url"
+      return
+    fi
+    sleep 1
+  done
+  [ -f "$RUN/server.log" ] && tail -20 "$RUN/server.log" >&2
+  die "server did not answer $url/tracker within 90s"
+}
+
+cmd_doctor() {
+  local ok=1 url
+  url="$(base_url)"
+  echo "repo:      $REPO ($(cd "$REPO" && git rev-parse --short HEAD), $(cd "$REPO" && git status --porcelain | wc -l | tr -d ' ') uncommitted paths)"
+  if [ -f "$HARNESS/node_modules/playwright/package.json" ]; then
+    echo "harness:   ok"
+  else
+    echo "harness:   MISSING, run: vsa setup"; ok=0
+  fi
+  if [ -f "$RUN/server.pid" ] && kill -0 "$(cat "$RUN/server.pid")" 2>/dev/null; then
+    echo "server:    ours (pid $(cat "$RUN/server.pid"))"
+  elif [ -n "$(find_repo_dev_server)" ]; then
+    echo "server:    reused, not ours ($(find_repo_dev_server))"
+  else
+    echo "server:    NOT RUNNING, run: vsa launch"; ok=0
+  fi
+  local title
+  title="$(curl -fsS "$url/tracker" 2>/dev/null | grep -o '<title>[^<]*</title>' | head -1 || true)"
+  if [ "$title" = "<title>Scholarship Intelligence</title>" ]; then
+    echo "http:      ok ($url serves Scholarship Intelligence)"
+  else
+    echo "http:      FAIL ($url did not serve the app title, got: ${title:-nothing})"; ok=0
+  fi
+  if grep -q '^ANTHROPIC_API_KEY=.\+' "$REPO/.env.local" 2>/dev/null; then
+    echo "anthropic: key present (AI scenarios will spend real API credits)"
+  else
+    echo "anthropic: key missing (score/generate/discover will error)"
+  fi
+  [ "$ok" = 1 ] && echo "doctor: OK" || { echo "doctor: NOT OK"; exit 1; }
+}
+
+cmd_drive() {
+  local name="${1:-}"
+  [ -n "$name" ] || die "usage: vsa drive <scenario>  (see $SKILL_DIR/scenarios)"
+  local file="$SKILL_DIR/scenarios/$name.mjs"
+  [ -f "$file" ] || die "no scenario $file"
+  local out="$EVIDENCE/$(date +%Y%m%d-%H%M%S)-$name"
+  mkdir -p "$out"
+  echo "vsa: evidence -> $out"
+  VSA_BASE_URL="$(base_url)" VSA_OUT="$out" VSA_HARNESS="$HARNESS" \
+    node "$file" 2>&1 | tee "$out/transcript.txt"
+  local rc=${PIPESTATUS[0]}
+  echo "exit=$rc" >> "$out/transcript.txt"
+  echo "vsa: scenario $name exit $rc, evidence in $out"
+  return "$rc"
+}
+
+cmd_cleanup() {
+  if [ -f "$RUN/server.pid" ]; then
+    local pid
+    pid="$(cat "$RUN/server.pid")"
+    if kill -0 "$pid" 2>/dev/null; then
+      # npx -> next dev -> server: kill the tree we started, nothing else.
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      kill -TERM "$pid" 2>/dev/null || true
+      sleep 2
+      pkill -KILL -P "$pid" 2>/dev/null || true
+      kill -KILL "$pid" 2>/dev/null || true
+      echo "vsa: stopped our server (pid $pid)"
+    fi
+  else
+    echo "vsa: no server started by vsa, nothing to stop"
+  fi
+  [ -f "$RUN/server.log" ] && mkdir -p "$EVIDENCE" && cp "$RUN/server.log" "$EVIDENCE/last-server.log"
+  rm -rf "$RUN"
+  echo "vsa: run state removed, evidence kept in $EVIDENCE"
+}
+
+case "${1:-}" in
+  setup) cmd_setup ;;
+  launch) cmd_launch ;;
+  doctor) cmd_doctor ;;
+  drive) shift; cmd_drive "$@" ;;
+  cleanup) cmd_cleanup ;;
+  paths) cmd_paths ;;
+  *) die "usage: vsa setup | launch | doctor | drive <scenario> | cleanup | paths" ;;
+esac
